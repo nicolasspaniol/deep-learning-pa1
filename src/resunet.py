@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 
 # 1. Treinem uma das arquiteturas da aula para segmentação binária (fundo vs. objeto).
@@ -88,7 +89,6 @@ class ResUNet(nn.Module):
 
 if __name__ == '__main__':
     from synthetic_dataset import SyntheticEllipseDataset
-    import torch
     import matplotlib.pyplot as plt
     import torch.nn.functional as F
     from torch.utils.data import DataLoader
