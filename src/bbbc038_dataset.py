@@ -88,6 +88,55 @@ class BBBC038Dataset(Dataset):
         return image, mask
 
 
+class InstanceEvaluationSubset(Dataset):
+    def __init__(self, original_dataset, indices):
+        self.original_dataset = original_dataset
+        self.indices = list(indices)
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, position):
+        original_index = self.indices[position]
+
+        image, semantic_mask = self.original_dataset[original_index]
+
+        image_id = self.original_dataset.ids[original_index]
+        mask_dir = (
+            self.original_dataset.train_dir
+            / image_id
+            / "masks"
+        )
+
+        instance_map = np.zeros(
+            (IMG_SIZE, IMG_SIZE)
+        )
+
+        mask_files = sorted(os.listdir(mask_dir))
+
+        for instance_id, mask_file in enumerate( mask_files, start=1):
+            instance_mask = imread( mask_dir/mask_file) > 0
+
+            instance_mask = resize( instance_mask.astype(np.uint8), (IMG_SIZE, IMG_SIZE),
+                order=0,
+                preserve_range=True,
+                anti_aliasing=False
+            ).astype(bool)
+
+            instance_map[instance_mask] = instance_id
+
+        instance_map = torch.from_numpy(
+            instance_map
+        ).long()
+
+        return (
+            image,
+            semantic_mask,
+            instance_map,
+            image_id
+        )
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
