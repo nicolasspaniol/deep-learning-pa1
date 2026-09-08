@@ -64,6 +64,69 @@ def instance_iou_matrix(gt_map, pred_map):
             iou_matrix[i, j] = iou.item()
 
     return iou_matrix
+    
+def greedy_matching(iou_matrix, threshold):
+    n_gt, n_pred = iou_matrix.shape
+
+    gt_candidates, pred_candidates = np.where(iou_matrix >= threshold)
+
+    candidate_ious = iou_matrix[gt_candidates, pred_candidates]
+
+    # Pares con IoU maior primero
+    order = np.argsort(candidate_ious)[::-1]
+
+    used_gt = set()
+    used_pred = set()
+
+    matches = []
+
+    for index in order:
+        gt_index = int(gt_candidates[index])
+        pred_index = int(pred_candidates[index])
+
+        if gt_index in used_gt:
+            continue
+
+        if pred_index in used_pred:
+            continue
+
+        used_gt.add(gt_index)
+        used_pred.add(pred_index)
+
+        matches.append((gt_index, pred_index, float(iou_matrix[gt_index, pred_index])))
+
+    tp = len(matches)
+    fp = n_pred - tp
+    fn = n_gt - tp
+
+    return tp, fp, fn
+
+def evaluate_instance_prediction(gt_map, pred_map):
+    iou_matrix = instance_iou_matrix(gt_map, pred_map)
+
+    results = []
+
+    IOU_THRESHOLDS = np.arange(0.50, 0.951, 0.05)
+
+    for threshold in IOU_THRESHOLDS:
+        tp, fp, fn = greedy_matching(iou_matrix, threshold)
+
+        denominator = tp + fp + fn
+
+        if denominator == 0:
+            ap = 1.0
+        else:
+            ap = tp / denominator
+
+        results.append({
+            "iou_threshold": float(threshold),
+            "TP": tp,
+            "FP": fp,
+            "FN": fn,
+            "AP": ap
+        })
+
+    return results
 
 
 
