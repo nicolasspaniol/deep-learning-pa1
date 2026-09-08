@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-from xml import utils
 import cv2
 
 def is_binary(mask):
@@ -80,3 +79,29 @@ if __name__ == '__main__':
 
     assert torch.isclose(dice_score(a, a), torch.tensor(1.0))
     assert torch.isclose(dice_score(a, b), torch.tensor(0.8))
+
+    c = np.array([[0, 1, 1], 
+                  [0, 2, 0]])
+
+    ids = get_instance_ids(c)
+    assert np.array_equal(ids, np.array([1, 2]))
+
+    gt_map = np.array([
+        [1, 1, 0],
+        [1, 1, 0],
+        [0, 0, 2]
+    ])
+
+    pred_map = np.array([
+        [1, 1, 0],
+        [1, 0, 0],
+        [0, 0, 2]
+    ])
+
+    expected_matrix = np.array([
+        [0.75, 0.0],  
+        [0.0,  1.0]   
+    ], dtype=np.float32)
+
+    iou_matrix_result = instance_iou_matrix(gt_map, pred_map)
+    assert np.allclose(iou_matrix_result, expected_matrix, atol=1e-5)

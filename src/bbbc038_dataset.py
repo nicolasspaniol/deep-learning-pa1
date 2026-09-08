@@ -89,9 +89,10 @@ class BBBC038Dataset(Dataset):
 
 
 class InstanceEvaluationSubset(Dataset):
-    def __init__(self, original_dataset, indices):
+    def __init__(self, original_dataset, indices, img_size=128):
         self.original_dataset = original_dataset
         self.indices = list(indices)
+        self.img_size = img_size
 
     def __len__(self):
         return len(self.indices)
@@ -109,7 +110,7 @@ class InstanceEvaluationSubset(Dataset):
         )
 
         instance_map = np.zeros(
-            (IMG_SIZE, IMG_SIZE)
+            (self.img_size, self.img_size)
         )
 
         mask_files = sorted(os.listdir(mask_dir))
@@ -117,7 +118,7 @@ class InstanceEvaluationSubset(Dataset):
         for instance_id, mask_file in enumerate( mask_files, start=1):
             instance_mask = imread( mask_dir/mask_file) > 0
 
-            instance_mask = resize( instance_mask.astype(np.uint8), (IMG_SIZE, IMG_SIZE),
+            instance_mask = resize( instance_mask.astype(np.uint8), (self.img_size, self.img_size),
                 order=0,
                 preserve_range=True,
                 anti_aliasing=False
