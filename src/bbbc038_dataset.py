@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 from skimage.io import imread
 from skimage.transform import resize
 
-from utils import is_binary
+from .utils import is_binary
 
 BBBC038_URL = 'https://data.broadinstitute.org/bbbc/BBBC038/stage1_train.zip'
 
