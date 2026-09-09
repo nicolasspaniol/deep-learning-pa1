@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import cv2
 
+
 def is_binary(mask):
     return torch.all((mask == 0) | (mask == 1))
 
@@ -25,8 +26,8 @@ def dice_score(true_mask, pred_mask):
     total = (true_mask + pred_mask).sum()
     return 2 * intersection / total
 
-def probability_to_instances(probability, threshold=0.5):
 
+def probability_to_instances(probability, threshold=0.5):
     binary_mask = (probability >= threshold).astype(np.uint8)
 
     number_of_labels, instance_map = cv2.connectedComponents(
@@ -35,6 +36,7 @@ def probability_to_instances(probability, threshold=0.5):
     )
 
     return instance_map.astype(np.int32)
+
 
 def get_instance_ids(instance_map):
     ids = np.unique(instance_map)
@@ -64,7 +66,8 @@ def instance_iou_matrix(gt_map, pred_map):
             iou_matrix[i, j] = iou.item()
 
     return iou_matrix
-    
+
+
 def greedy_matching(iou_matrix, threshold):
     n_gt, n_pred = iou_matrix.shape
 
@@ -101,6 +104,7 @@ def greedy_matching(iou_matrix, threshold):
 
     return tp, fp, fn
 
+
 def evaluate_instance_prediction(gt_map, pred_map):
     iou_matrix = instance_iou_matrix(gt_map, pred_map)
 
@@ -127,7 +131,6 @@ def evaluate_instance_prediction(gt_map, pred_map):
         })
 
     return results
-
 
 
 if __name__ == '__main__':
