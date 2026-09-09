@@ -1,7 +1,3 @@
-data/
-
-# auto generated stuff below
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
