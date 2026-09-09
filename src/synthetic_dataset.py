@@ -40,33 +40,3 @@ class SyntheticEllipseDataset(Dataset):
         mask_t = torch.from_numpy(mask).float() / 255.0
 
         return img_t, mask_t
-
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-
-    # Visualizando uma amostra
-    dataset = SyntheticEllipseDataset(num_samples=1)
-    img, mask = dataset[0]
-
-    print(img.shape, mask.shape)
-    assert img.dtype == torch.float32
-    assert mask.dtype == torch.float32
-    assert img.min() >= 0 and img.max() <= 1
-    assert mask.min() >= 0 and mask.max() <= 1
-
-    img = img.permute(1, 2, 0).numpy()
-    mask = mask.numpy()
-
-    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-    axes[0].imshow(img)
-    axes[0].set_title("Image")
-    axes[0].axis("off")
-
-    axes[1].imshow(mask, cmap="gray")
-    axes[1].set_title("Answer (0/1 mask)")
-    axes[1].axis("off")
-
-    plt.tight_layout()
-    plt.show()
-

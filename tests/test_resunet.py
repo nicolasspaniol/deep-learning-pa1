@@ -1,20 +1,25 @@
+import torch
+
 from resunet import ResUNet
 
-def test_resunet():
-    from synthetic_dataset import SyntheticEllipseDataset
-    import matplotlib.pyplot as plt
-    import torch.nn.functional as F
-    from torch.utils.data import DataLoader
 
-    model = ResUNet(3, 1)
-    model.eval()
+def test_resunet_preserves_batch_size_and_spatial_resolution():
+    model = ResUNet(3, 1).eval()
+    image = torch.rand(1, 3, 32, 32)
 
-    dataset = SyntheticEllipseDataset(num_samples=1)
-    dataloader = DataLoader(dataset)
+    with torch.no_grad():
+        output = model(image)
 
-    img, mask = next(iter(dataloader))
-    y = F.sigmoid(model(img))
+    assert output.shape[0] == image.shape[0], "output batch size must match input batch size"
+    assert output.shape[2:] == image.shape[2:], "output height and width must match the input"
 
-    assert y.shape[0] == img.shape[0], 'output size is the same as input'
-    # shape[1] é o número de canais, que pode variar
-    assert y.shape[2] == img.shape[2] and y.shape[3] == img.shape[3], 'output image resolution is the same as input'
+
+def test_resunet_uses_requested_output_channels_and_returns_finite_logits():
+    model = ResUNet(3, 2).eval()
+    image = torch.rand(1, 3, 32, 32)
+
+    with torch.no_grad():
+        output = model(image)
+
+    assert output.shape[1] == 2, "output channel count must equal out_channels"
+    assert torch.isfinite(output).all(), "model logits must not contain NaN or infinity"

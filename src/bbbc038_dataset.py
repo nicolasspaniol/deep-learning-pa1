@@ -5,11 +5,11 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from skimage.io import imread
 from skimage.transform import resize
 
-from .utils import is_binary
+from utils import is_binary
 
 BBBC038_URL = 'https://data.broadinstitute.org/bbbc/BBBC038/stage1_train.zip'
 
@@ -136,34 +136,3 @@ class InstanceEvaluationSubset(Dataset):
             instance_map,
             image_id
         )
-
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-
-    ds = BBBC038Dataset(download=True)
-    print(f'Loaded {len(ds)} samples')
-
-    for img, mask in DataLoader(ds, shuffle=True):
-        img, mask = img[0], mask[0]
-
-        assert img.shape == (3, ds.img_size, ds.img_size), img.shape
-        assert mask.shape == (ds.img_size, ds.img_size), mask.shape
-        assert img.dtype == torch.float32, img.dtype
-        assert mask.dtype == torch.float32, mask.dtype
-        assert img.min() >= 0 and img.max() <= 1, (img.min(), img.max())
-        assert is_binary(mask)
-
-        img = img.permute(1, 2, 0).cpu().detach().numpy()
-        mask = mask.cpu().detach().numpy()
-
-        fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-        axes[0].imshow(img)
-        axes[0].set_title("Image")
-        axes[0].axis("off")
-
-        axes[1].imshow(mask, cmap="gray")
-        axes[1].set_title("Answer (0/1 mask)")
-        axes[1].axis("off")
-
-        plt.show()

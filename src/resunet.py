@@ -85,32 +85,3 @@ class ResUNet(nn.Module):
         y = self.dec2(y, out0)
 
         return self.ending(y)
-
-
-if __name__ == '__main__':
-    from synthetic_dataset import SyntheticEllipseDataset
-    import matplotlib.pyplot as plt
-    import torch.nn.functional as F
-    from torch.utils.data import DataLoader
-
-    model = ResUNet(3, 1)
-    model.eval()
-
-    dataset = SyntheticEllipseDataset(num_samples=1)
-    for img, mask in DataLoader(dataset):
-        y = F.sigmoid(model(img))
-
-        # mesmo número de datapoints
-        assert y.shape[0] == img.shape[0]
-        # shape[1] é o número de canais, que pode variar
-        # mesma resolução
-        assert y.shape[2] == img.shape[2]
-        assert y.shape[3] == img.shape[3]
-
-        fig, ax = plt.subplots()
-        ax.imshow(y[0,0].detach().cpu().numpy(), cmap='gray')
-        ax.set_title('Saída do modelo')
-        ax.axis('off')
-        plt.show()
-
-        break
