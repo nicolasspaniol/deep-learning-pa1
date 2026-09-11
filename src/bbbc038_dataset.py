@@ -1,138 +1,68 @@
-import os
-import zipfile
-import urllib.request
 from pathlib import Path
 
-import numpy as np
 import torch
 from torch.utils.data import Dataset
-from skimage.io import imread
-from skimage.transform import resize
-
-from utils import is_binary
-
-BBBC038_URL = 'https://data.broadinstitute.org/bbbc/BBBC038/stage1_train.zip'
+from torchvision.io import read_image
+from torchvision.transforms.functional import resize, InterpolationMode
 
 
 class BBBC038Dataset(Dataset):
-    def __init__(self, root_dir='./data', img_size=128, download=False):
-        '''
-        Args:
-            root_dir: base folder where the dataset lives (or will be downloaded to).
-            img_size: images/masks are resized to (img_size, img_size).
-            download: if True, download + extract the dataset when it's not
-                      already present at `root_dir/stage1_train`.
-        '''
-        self.root_dir = Path(root_dir)
-        self.train_dir = self.root_dir / 'stage1_train'
+    def __init__(self, is_training: bool, path: str | Path, img_size: int = 128):
+        self.data_dir = Path(path)
+
+        if not self.data_dir.exists():
+            raise RuntimeError(f'Dataset not found at "{self.data_dir}"')
+
         self.img_size = img_size
+        self.is_training = is_training
 
-        if download:
-            self._download()
-
-        if not self.train_dir.exists():
-            raise RuntimeError(
-                f'Dataset not found at {self.train_dir}. '
-                'Pass download=True to fetch it automatically.'
-            )
-
-        # each subfolder of train_dir is one sample id
-        self.ids = sorted(os.listdir(self.train_dir))
-
-    def _download(self):
-        '''Download and extract the BBBC038 stage1_train set if not already present.'''
-        if self.train_dir.exists():
-            return  # already downloaded, nothing to do
-
-        self.root_dir.mkdir(parents=True, exist_ok=True)
-        zip_path = self.root_dir / 'stage1_train.zip'
-
-        if not zip_path.exists():
-            print(f'Downloading BBBC038 dataset to {zip_path} ...')
-            urllib.request.urlretrieve(BBBC038_URL, zip_path)
-
-        print(f'Extracting {zip_path} ...')
-        with zipfile.ZipFile(zip_path, 'r') as zf:
-            zf.extractall(self.train_dir)
+        # Each subfolder of data_dir is one sample ID. Ignore files such as
+        # archive metadata that may be present alongside the samples.
+        self.ids = sorted(path.name for path in self.data_dir.iterdir() if path.is_dir())
 
     def __len__(self):
         return len(self.ids)
 
     def __getitem__(self, idx):
         sample_id = self.ids[idx]
-        sample_dir = self.train_dir / sample_id
-        mask_dir = sample_dir / 'masks'
+        sample_dir = self.data_dir / sample_id
+        masks_dir = sample_dir / 'masks'
         img_path = sample_dir / 'images' / f'{sample_id}.png'
 
         # load image, drop alpha channel if present, normalize to [0, 1]
-        image = imread(img_path)[..., :3] / 255.0
+        image = read_image(str(img_path))[:3].float() / 255.0
 
-        # each sample has multiple instance masks; merge them into one binary mask
-        masks = [imread(mask_dir / f) for f in os.listdir(mask_dir)]
-        mask = np.max(masks, axis=0) / 255
-
-        # resize image (interpolated) and mask (nearest-neighbor, no anti-aliasing)
-        image = resize(image, (self.img_size, self.img_size), preserve_range=True)
-        mask = resize(
-            mask,
-            (self.img_size, self.img_size),
-            order=0,
-            preserve_range=True,
-            anti_aliasing=False,
-        ).astype(np.uint8)
-
-        # to CHW tensors
-        image = torch.from_numpy(image).permute(2, 0, 1).contiguous().float()
-        mask = torch.from_numpy(mask[..., None]).permute(2, 0, 1)[0].contiguous().float()
-
-        return image, mask
-
-
-class InstanceEvaluationSubset(Dataset):
-    def __init__(self, original_dataset, indices, img_size=128):
-        self.original_dataset = original_dataset
-        self.indices = list(indices)
-        self.img_size = img_size
-
-    def __len__(self):
-        return len(self.indices)
-
-    def __getitem__(self, position):
-        original_index = self.indices[position]
-
-        image, semantic_mask = self.original_dataset[original_index]
-
-        image_id = self.original_dataset.ids[original_index]
-        mask_dir = (
-            self.original_dataset.train_dir
-            / image_id
-            / "masks"
-        )
-
-        instance_map = np.zeros(
-            (self.img_size, self.img_size)
-        )
-
-        mask_files = sorted(os.listdir(mask_dir))
-
-        for instance_id, mask_file in enumerate( mask_files, start=1):
-            instance_mask = imread( mask_dir/mask_file) > 0
-
-            instance_mask = resize( instance_mask.astype(np.uint8), (self.img_size, self.img_size),
-                order=0,
-                preserve_range=True,
-                anti_aliasing=False
-            ).astype(bool)
-
-            instance_map[instance_mask] = instance_id
-
-        instance_map = torch.from_numpy(
-            instance_map
-        ).long()
-
-        return (
+        # resize image (interpolated)
+        image = resize(
             image,
-            semantic_mask,
-            instance_map,
-            image_id
+            [self.img_size, self.img_size],
+            interpolation=InterpolationMode.BILINEAR,
+            antialias=True
         )
+
+        # if loading the test dataset, returns only the input image
+        if not self.is_training:
+            return sample_id, image
+
+        # rest of the method considers is_training=True
+
+        mask_files = sorted(path for path in masks_dir.iterdir() if path.is_file())
+
+        instance_map = torch.zeros(
+            (self.img_size, self.img_size), dtype=torch.int64
+        )
+
+        # merges all instance masks into a single map, with each instance having
+        # its own ID
+        for instance_id, mask_path in enumerate(mask_files, 1):
+            mask = read_image(str(mask_path))[0] > 0
+            mask = resize(
+                mask.unsqueeze(0),
+                (self.img_size, self.img_size),
+                interpolation=InterpolationMode.NEAREST,
+            )[0]
+            instance_map[mask] = instance_id
+
+        semantic_mask = (instance_map > 0).float()
+
+        return sample_id, image, semantic_mask, instance_map
