@@ -187,3 +187,29 @@ def find_peaks(heatmap_np, threshold=0.3, nms_kernel=5, top_k=50):
     order = np.argsort(-scores)[:top_k]
     return xs[order], ys[order]
 
+
+def assign_instances(positions, centroids, background_mask=None):
+    """
+    positions: (2, H, W) float tensor - predicted (x, y) or (row, col) per pixel
+    centroids: (N, 2) tensor/array of centroid coordinates, same convention as positions
+    background_mask: optional (H, W) bool tensor - True where pixel should be instance 0
+                      (e.g. low-confidence pixels you zeroed out)
+
+    returns: (H, W) long tensor of instance ids, 1..N (0 = background)
+    """
+    centroids = torch.as_tensor(centroids, dtype=torch.float32)  # (N, 2)
+    H, W = positions.shape[1:]
+
+    # flatten pixel positions to (H*W, 2)
+    pix = positions.permute(1, 2, 0).reshape(-1, 2)  # (H*W, 2)
+
+    # pairwise distances (H*W, N)
+    dists = torch.cdist(pix, centroids)  # euclidean (norm 2) by default
+
+    nearest = dists.argmin(dim=1) + 1  # +1 so instance ids start at 1, 0 reserved for bg
+    instances = nearest.reshape(H, W)
+
+    if background_mask is not None:
+        instances[background_mask] = 0
+
+    return instances
