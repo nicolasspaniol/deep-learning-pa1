@@ -131,3 +131,34 @@ def evaluate_instance_prediction(gt_map, pred_map):
         })
 
     return results
+
+
+def compute_map(model, dataset, utils, device, threshold):
+    model.eval()
+    loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
+
+    image_maps = []
+    count_errors = []
+    ap_by_thr = {}
+
+    with torch.no_grad():
+        for image_id, image, semantic_mask, gt_batch in loader:
+            probability = torch.sigmoid(model(image.to(device)))[0, 0].cpu().numpy()
+            pred_map = probability_to_instances(probability, threshold=threshold)
+            gt_map = gt_batch[0].numpy()
+
+            results = evaluate_instance_prediction(gt_map, pred_map)
+
+            image_maps.append(np.mean([r["AP"] for r in results]))
+            count_errors.append(abs(
+                len(utils.get_instance_ids(pred_map)) - len(utils.get_instance_ids(gt_map))
+            ))
+
+            for r in results:
+                ap_by_thr.setdefault(r["iou_threshold"], []).append(r["AP"])
+
+    return {
+        "final_map": float(np.mean(image_maps)),
+        "count_mae": float(np.mean(count_errors)),
+        "ap_by_threshold": {thr: float(np.mean(aps)) for thr, aps in sorted(ap_by_thr.items())},
+    }
