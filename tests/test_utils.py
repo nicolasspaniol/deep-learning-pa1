@@ -2,16 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from utils import (
-    dice_score,
-    evaluate_instance_prediction,
-    get_instance_ids,
-    greedy_matching,
-    instance_iou_matrix,
-    iou_score,
-    is_binary,
-    probability_to_instances,
-)
+from utils import *
 
 
 def test_is_binary_accepts_only_zero_and_one_values():
