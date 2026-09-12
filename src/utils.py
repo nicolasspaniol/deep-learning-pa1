@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import numpy as np
 import cv2
 
@@ -139,10 +140,15 @@ def compute_map(gt_pred_pairs):
 
     Returns dict with "final_map" and "ap_by_threshold".
     """
+    gt_pred_pairs = list(gt_pred_pairs)
+    assert gt_pred_pairs, "at least one ground-truth/prediction pair is required"
+
     image_maps = []
     ap_by_thr = {}
 
     for gt_map, pred_map in gt_pred_pairs:
+        assert gt_map.ndim == pred_map.ndim == 2, "instance maps must be 2D"
+        assert gt_map.shape == pred_map.shape, "instance maps must have the same shape"
         results = evaluate_instance_prediction(gt_map, pred_map)
 
         image_maps.append(np.mean([r["AP"] for r in results]))
@@ -160,6 +166,13 @@ def compute_count_mae(gt_pred_pairs):
     gt_pred_pairs: iterable of (gt_map, pred_map) instance maps, one per image.
    """
 
+    gt_pred_pairs = list(gt_pred_pairs)
+    assert gt_pred_pairs, "at least one ground-truth/prediction pair is required"
+
+    for gt_map, pred_map in gt_pred_pairs:
+        assert gt_map.ndim == pred_map.ndim == 2, "instance maps must be 2D"
+        assert gt_map.shape == pred_map.shape, "instance maps must have the same shape"
+
     errors = [
         abs(len(get_instance_ids(pred_map)) - len(get_instance_ids(gt_map)))
         for gt_map, pred_map in gt_pred_pairs
@@ -172,6 +185,11 @@ def find_peaks(heatmap_np, threshold=0.3, nms_kernel=5, top_k=50):
     Detecta picos locais num heatmap 2D usando NMS via max-pooling.
     nms_kernel: tamanho da janela (impar) -> define a distancia minima entre picos.
     """
+    assert isinstance(heatmap_np, np.ndarray), "heatmap must be a NumPy array"
+    assert heatmap_np.ndim == 2, "heatmap must be 2D"
+    assert isinstance(nms_kernel, int) and nms_kernel > 0 and nms_kernel % 2 == 1, "nms_kernel must be a positive odd integer"
+    assert isinstance(top_k, int) and top_k > 0, "top_k must be a positive integer"
+
     hm = torch.from_numpy(heatmap_np).float().unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
  
     pad = nms_kernel // 2
@@ -197,8 +215,16 @@ def assign_instances(positions, centroids, background_mask=None):
 
     returns: (H, W) long tensor of instance ids, 1..N (0 = background)
     """
-    centroids = torch.as_tensor(centroids, dtype=torch.float32)  # (N, 2)
+    assert torch.is_tensor(positions), "positions must be a tensor"
+    assert positions.ndim == 3 and positions.shape[0] == 2, "positions must have shape (2, H, W)"
+
+    centroids = torch.as_tensor(centroids, dtype=torch.float32, device=positions.device)  # (N, 2)
+    assert centroids.ndim == 2 and centroids.shape[1] == 2 and len(centroids) > 0, "centroids must have shape (N, 2) with N > 0"
     H, W = positions.shape[1:]
+
+    if background_mask is not None:
+        assert torch.is_tensor(background_mask) and background_mask.dtype == torch.bool, "background_mask must be a boolean tensor"
+        assert background_mask.shape == (H, W), "background_mask must have shape (H, W)"
 
     # flatten pixel positions to (H*W, 2)
     pix = positions.permute(1, 2, 0).reshape(-1, 2)  # (H*W, 2)

@@ -75,3 +75,75 @@ def test_evaluate_instance_prediction_reports_all_thresholds_and_empty_case():
     assert results[-1]["iou_threshold"] == pytest.approx(0.95), "last evaluation threshold must be 0.95"
     assert all(result["TP"] == result["FP"] == result["FN"] == 0 for result in results), "empty maps must have no detections"
     assert all(result["AP"] == 1.0 for result in results), "two empty maps must receive perfect AP"
+
+
+def test_compute_map_averages_image_ap_and_groups_scores_by_threshold():
+    pairs = [
+        (np.array([[1, 1], [0, 0]]), np.array([[1, 1], [0, 0]])),
+        (np.array([[1, 1], [0, 0]]), np.zeros((2, 2), dtype=np.int32)),
+    ]
+
+    result = compute_map(pairs)
+
+    assert result["final_map"] == pytest.approx(0.5), "mAP must average AP across images and thresholds"
+    assert list(result["ap_by_threshold"]) == pytest.approx(np.arange(0.5, 0.951, 0.05)), "scores must be reported for every IoU threshold"
+    assert all(score == pytest.approx(0.5) for score in result["ap_by_threshold"].values()), "each threshold must average its image APs"
+
+
+def test_compute_count_mae_averages_absolute_instance_count_errors():
+    pairs = [
+        (np.array([[1, 0], [2, 0]]), np.array([[1, 0], [0, 0]])),
+        (np.array([[1, 0], [0, 0]]), np.array([[4, 0], [0, 0]])),
+    ]
+
+    assert compute_count_mae(pairs) == pytest.approx(0.5), "MAE must average absolute differences in instance counts"
+
+
+def test_instance_metric_aggregates_reject_empty_or_mismatched_maps():
+    with pytest.raises(AssertionError, match="at least one"):
+        compute_map([])
+    with pytest.raises(AssertionError, match="same shape"):
+        compute_count_mae([(np.zeros((2, 2)), np.zeros((3, 3)))])
+
+
+def test_find_peaks_returns_top_local_maxima_in_xy_order():
+    heatmap = np.zeros((5, 5), dtype=np.float32)
+    heatmap[1, 1] = 0.9
+    heatmap[3, 3] = 0.8
+    heatmap[1, 2] = 0.7
+
+    xs, ys = find_peaks(heatmap, threshold=0.5, nms_kernel=3, top_k=2)
+
+    assert np.array_equal(xs, np.array([1, 3])), "peaks must be returned in descending score order as x coordinates"
+    assert np.array_equal(ys, np.array([1, 3])), "peaks must be returned in descending score order as y coordinates"
+
+
+def test_find_peaks_rejects_invalid_heatmap_or_nms_arguments():
+    with pytest.raises(AssertionError, match="2D"):
+        find_peaks(np.zeros((1, 2, 2)))
+    with pytest.raises(AssertionError, match="positive odd"):
+        find_peaks(np.zeros((2, 2)), nms_kernel=2)
+    with pytest.raises(AssertionError, match="top_k"):
+        find_peaks(np.zeros((2, 2)), top_k=0)
+
+
+def test_assign_instances_uses_nearest_centroid_and_reserves_background_id_zero():
+    positions = torch.tensor([
+        [[0.0, 10.0], [3.0, 10.0]],
+        [[0.0, 0.0], [10.0, 10.0]],
+    ])
+    background_mask = torch.tensor([[False, True], [False, False]])
+
+    instances = assign_instances(positions, [[0.0, 0.0], [10.0, 10.0]], background_mask)
+
+    assert torch.equal(instances, torch.tensor([[1, 0], [2, 2]])), "pixels must use one-based nearest-centroid IDs and zero for background"
+    assert instances.dtype == torch.int64, "instance IDs must be long tensors"
+
+
+def test_assign_instances_rejects_invalid_position_centroid_or_background_shapes():
+    with pytest.raises(AssertionError, match="positions"):
+        assign_instances(torch.zeros(3, 2, 2), [[0, 0]])
+    with pytest.raises(AssertionError, match="centroids"):
+        assign_instances(torch.zeros(2, 2, 2), [[0, 0, 0]])
+    with pytest.raises(AssertionError, match="background_mask"):
+        assign_instances(torch.zeros(2, 2, 2), [[0, 0]], torch.zeros(3, 3, dtype=torch.bool))
