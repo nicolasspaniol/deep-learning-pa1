@@ -133,32 +133,57 @@ def evaluate_instance_prediction(gt_map, pred_map):
     return results
 
 
-def compute_map(model, dataset, utils, device, threshold):
-    model.eval()
-    loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
+def compute_map(gt_pred_pairs):
+    """
+    gt_pred_pairs: iterable of (gt_map, pred_map) instance maps, one per image.
 
+    Returns dict with "final_map" and "ap_by_threshold".
+    """
     image_maps = []
-    count_errors = []
     ap_by_thr = {}
 
-    with torch.no_grad():
-        for image_id, image, semantic_mask, gt_batch in loader:
-            probability = torch.sigmoid(model(image.to(device)))[0, 0].cpu().numpy()
-            pred_map = probability_to_instances(probability, threshold=threshold)
-            gt_map = gt_batch[0].numpy()
+    for gt_map, pred_map in gt_pred_pairs:
+        results = evaluate_instance_prediction(gt_map, pred_map)
 
-            results = evaluate_instance_prediction(gt_map, pred_map)
-
-            image_maps.append(np.mean([r["AP"] for r in results]))
-            count_errors.append(abs(
-                len(utils.get_instance_ids(pred_map)) - len(utils.get_instance_ids(gt_map))
-            ))
-
-            for r in results:
-                ap_by_thr.setdefault(r["iou_threshold"], []).append(r["AP"])
+        image_maps.append(np.mean([r["AP"] for r in results]))
+        for r in results:
+            ap_by_thr.setdefault(r["iou_threshold"], []).append(r["AP"])
 
     return {
         "final_map": float(np.mean(image_maps)),
-        "count_mae": float(np.mean(count_errors)),
         "ap_by_threshold": {thr: float(np.mean(aps)) for thr, aps in sorted(ap_by_thr.items())},
     }
+
+
+def compute_count_mae(gt_pred_pairs):
+    """
+    gt_pred_pairs: iterable of (gt_map, pred_map) instance maps, one per image.
+   """
+
+    errors = [
+        abs(len(get_instance_ids(pred_map)) - len(get_instance_ids(gt_map)))
+        for gt_map, pred_map in gt_pred_pairs
+    ]
+    return float(np.mean(errors))
+
+
+def find_peaks(heatmap_np, threshold=0.3, nms_kernel=5, top_k=50):
+    """
+    Detecta picos locais num heatmap 2D usando NMS via max-pooling.
+    nms_kernel: tamanho da janela (impar) -> define a distancia minima entre picos.
+    """
+    hm = torch.from_numpy(heatmap_np).float().unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
+ 
+    pad = nms_kernel // 2
+    hm_max = F.max_pool2d(hm, kernel_size=nms_kernel, stride=1, padding=pad)
+ 
+    keep = (hm_max == hm).float()
+    peaks = hm * keep
+ 
+    peaks = peaks[0, 0].numpy()
+    ys, xs = np.where(peaks > threshold)
+    scores = peaks[ys, xs]
+ 
+    order = np.argsort(-scores)[:top_k]
+    return xs[order], ys[order]
+
