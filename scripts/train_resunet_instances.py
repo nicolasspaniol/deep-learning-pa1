@@ -4,7 +4,6 @@ from resunet import ResUNet
 
 from sys import argv
 import random
-import matplotlib.pyplot as plt
 import datetime
 from tqdm import tqdm
 import numpy as np
