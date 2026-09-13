@@ -12,7 +12,7 @@ class CenterOffsetDataset(Dataset):
                        offset loss with this)
     """
 
-    def __init__(self, base_dataset, gaussian_sigma: float = 4.0):
+    def __init__(self, base_dataset, gaussian_sigma: float = 2.0):
         assert base_dataset.is_training, "CenterOffsetDataset needs the training split (needs instance_map)"
         self.base_dataset = base_dataset
         self.gaussian_sigma = gaussian_sigma
@@ -29,7 +29,7 @@ class CenterOffsetDataset(Dataset):
     def __len__(self):
         return len(self.base_dataset)
 
-    def _build_center_targets(self, instance_map: torch.Tensor, alpha: float = 2.0, eps: float = 1e-2):
+    def _build_center_targets(self, instance_map: torch.Tensor, sigma: float):
         H, W = instance_map.shape
         heatmap = torch.zeros((H, W), dtype=torch.float32)
         offsets = torch.zeros((2, H, W), dtype=torch.float32)
@@ -37,6 +37,8 @@ class CenterOffsetDataset(Dataset):
 
         instance_ids = torch.unique(instance_map)
         instance_ids = instance_ids[instance_ids > 0]
+
+        inv_two_sigma_sq = 1.0 / (2 * sigma ** 2)
 
         for inst_id in instance_ids.tolist():
             inst_mask = instance_map == inst_id
@@ -47,28 +49,10 @@ class CenterOffsetDataset(Dataset):
             cy = ys.float().mean()
             cx = xs.float().mean()
 
-            # matriz de covariância dos pixels da instância (encaixa a gaussiana na forma/orientação do objeto)
-            dx = xs.float() - cx
-            dy = ys.float() - cy
-            n = xs.numel()
-
-            var_x = (dx * dx).sum() / n + eps
-            var_y = (dy * dy).sum() / n + eps
-            cov_xy = (dx * dy).sum() / n
-
-            cov = torch.tensor([[var_x, cov_xy], [cov_xy, var_y]])
-            cov_scaled = alpha * cov  # escala pra controlar o "espalhamento" da gaussiana
-            cov_inv = torch.linalg.inv(cov_scaled)
-
-            # distância de Mahalanobis de cada pixel da imagem ao centro, usando a covariância da instância
             dxx = self._xx - cx
             dyy = self._yy - cy
-            mdist_sq = (
-                cov_inv[0, 0] * dxx ** 2
-                + 2 * cov_inv[0, 1] * dxx * dyy
-                + cov_inv[1, 1] * dyy ** 2
-            )
-            blob = torch.exp(-0.5 * mdist_sq)
+            dist_sq = dxx ** 2 + dyy ** 2
+            blob = torch.exp(-dist_sq * inv_two_sigma_sq)
             heatmap = torch.maximum(heatmap, blob)
 
             offsets[0][inst_mask] = cx - self._xx[inst_mask]
@@ -79,6 +63,6 @@ class CenterOffsetDataset(Dataset):
 
     def __getitem__(self, index):
         sample_id, image, semantic_mask, instance_map = self.base_dataset[index]
-        heatmap, offsets, offset_mask = self._build_center_targets(instance_map)
+        heatmap, offsets, offset_mask = self._build_center_targets(instance_map, self.gaussian_sigma)
 
         return sample_id, image, heatmap, offsets, offset_mask
