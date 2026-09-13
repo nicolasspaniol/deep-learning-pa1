@@ -3,8 +3,8 @@ from test_bbbc038_dataset import dataset_path
 import pytest
 import torch
 
-from bbbc038_dataset import BBBC038Dataset
-from tiled_dataset import TiledBBBC038Dataset
+from src.bbbc038_dataset import BBBC038Dataset
+from src.tiled_dataset import TiledBBBC038Dataset
 
 
 # --- Length -----------------------------------------------------------

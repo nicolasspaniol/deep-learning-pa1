@@ -1,6 +1,6 @@
 import torch
 
-from resunet import ResUNet
+from src.resunet import ResUNet
 
 
 def test_resunet_preserves_batch_size_and_spatial_resolution():

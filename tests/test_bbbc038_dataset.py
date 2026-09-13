@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 import torch
 
-from bbbc038_dataset import BBBC038Dataset
-from utils import is_binary
+from src.bbbc038_dataset import BBBC038Dataset
+from src.utils import is_binary
 
 @pytest.fixture
 def dataset_path(tmp_path):

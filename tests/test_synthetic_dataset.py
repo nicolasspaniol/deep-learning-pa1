@@ -1,6 +1,6 @@
 import torch
 
-from synthetic_dataset import SyntheticEllipseDataset
+from src.synthetic_dataset import SyntheticEllipseDataset
 
 
 def test_synthetic_ellipse_dataset_length_matches_requested_sample_count():
@@ -30,7 +30,7 @@ def test_synthetic_ellipse_dataset_assigns_distinct_ids_to_non_overlapping_ellip
     # One call determines the ellipse count, followed by six calls per ellipse:
     # center x/y, axes x/y, angle, and grayscale value.
     values = iter([2, 10, 10, 5, 5, 0, 50, 22, 22, 5, 5, 0, 100])
-    monkeypatch.setattr("synthetic_dataset.random.randint", lambda *_: next(values))
+    monkeypatch.setattr("src.synthetic_dataset.random.randint", lambda *_: next(values))
     dataset = SyntheticEllipseDataset(num_samples=1, img_size=32)
 
     _, semantic_mask, instance_map = dataset[0]

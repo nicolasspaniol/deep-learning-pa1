@@ -1,10 +1,10 @@
 # local files
-import utils
-from synthetic_dataset import SyntheticEllipseDataset
-from resunet import ResUNet
-from bbbc038_dataset import BBBC038Dataset
-from center_offset_dataset import CenterOffsetDataset
-from plotting import plot_sample, plot_prediction
+from src import utils
+from src.synthetic_dataset import SyntheticEllipseDataset
+from src.resunet import ResUNet
+from src.bbbc038_dataset import BBBC038Dataset
+from src.center_offset_dataset import CenterOffsetDataset
+from src.plotting import plot_sample, plot_prediction
 
 # libraries
 import os

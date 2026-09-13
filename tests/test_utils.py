@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from utils import *
+from src.utils import *
 
 
 def test_is_binary_accepts_only_zero_and_one_values():

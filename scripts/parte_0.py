@@ -1,7 +1,7 @@
 # local files
-from synthetic_dataset import SyntheticEllipseDataset
-from resunet import ResUNet
-import utils
+from src.synthetic_dataset import SyntheticEllipseDataset
+from src.resunet import ResUNet
+from src import utils
 
 # libraries
 import matplotlib.pyplot as plt

@@ -1,8 +1,8 @@
 from torch import Generator
 from torch.utils.data import random_split
 
-from bbbc038_dataset import BBBC038Dataset
-from center_offset_dataset import CenterOffsetDataset
+from src.bbbc038_dataset import BBBC038Dataset
+from src.center_offset_dataset import CenterOffsetDataset
 
 _gen = Generator().manual_seed(42)
 _img_size = 128
