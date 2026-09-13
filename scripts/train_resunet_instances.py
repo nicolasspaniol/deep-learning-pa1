@@ -1,6 +1,6 @@
-from src.datasets import bbbc038_center_offsets
-from src.plotting import plot_sample
-from src.resunet import ResUNet
+from datasets import bbbc038_center_offsets
+from plotting import plot_sample
+from resunet import ResUNet
 
 from sys import argv
 import random
