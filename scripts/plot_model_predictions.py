@@ -2,6 +2,7 @@ from src.plotting import plot_sample, plot_prediction
 from src.datasets import  bbbc038_center_offsets
 from src.resunet import ResUNet
 from src import utils
+from src.device import device
 
 import matplotlib.pyplot as plt
 import random
@@ -11,12 +12,9 @@ import numpy as np
 
 
 def main(weights_path: str):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print('Device:', device.type)
-
     train_ds, val_ds, test_ds = bbbc038_center_offsets()
 
-    model = ResUNet(3, 3).to(device)
+    model = ResUNet(3, 4).to(device)
     model.load_state_dict(torch.load(weights_path, map_location=device, weights_only=True))
     model.eval()
 
