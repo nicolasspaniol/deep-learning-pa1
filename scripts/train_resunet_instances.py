@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 
 def main(epochs: int):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device.type
+    print('Device:', device.type)
 
     # dataset -----------------------------
     train_ds, val_ds, test_ds = bbbc038_center_offsets()
@@ -25,7 +25,7 @@ def main(epochs: int):
     model = ResUNet(3, 3).to(device)
 
     # training process -------------------------
-    loader = DataLoader(val_ds, batch_size=16, shuffle=True)
+    loader = DataLoader(train_ds, batch_size=16, shuffle=True)
 
     heatmap_loss_fn = nn.MSELoss()
     offset_loss_fn = nn.L1Loss(reduction='none')  # 'none' pra poder mascarar pixel a pixel
