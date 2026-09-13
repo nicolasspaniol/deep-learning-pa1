@@ -48,9 +48,9 @@ class TiledBBBC038Dataset(Dataset):
                          antialias=(mode == InterpolationMode.BILINEAR))
         return tensor[0] if needs_batch else tensor
 
-    def __getitem__(self, idx):
+    def __getitem__(self, index):
         n2 = self.n_tiles ** 2
-        sample_idx, tile_idx = idx // n2, idx % n2
+        sample_idx, tile_idx = index // n2, index % n2
 
         sample = self.base_dataset[sample_idx]
         sample_id = sample[0]

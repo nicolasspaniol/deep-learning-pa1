@@ -23,8 +23,8 @@ class BBBC038Dataset(Dataset):
     def __len__(self):
         return len(self.ids)
 
-    def __getitem__(self, idx):
-        sample_id = self.ids[idx]
+    def __getitem__(self, index):
+        sample_id = self.ids[index]
         sample_dir = self.data_dir / sample_id
         masks_dir = sample_dir / 'masks'
         img_path = sample_dir / 'images' / f'{sample_id}.png'
@@ -58,7 +58,7 @@ class BBBC038Dataset(Dataset):
             mask = read_image(str(mask_path))[0] > 0
             mask = resize(
                 mask.unsqueeze(0),
-                (self.img_size, self.img_size),
+                [self.img_size, self.img_size],
                 interpolation=InterpolationMode.NEAREST,
             )[0]
             instance_map[mask] = instance_id

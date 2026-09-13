@@ -38,7 +38,7 @@ class SyntheticEllipseDataset(Dataset):
 
         return img, instance_map
 
-    def __getitem__(self, idx):
+    def __getitem__(self, index):
         img, instance_map = self._generate_sample()
 
         img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0

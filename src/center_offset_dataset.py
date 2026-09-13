@@ -77,8 +77,8 @@ class CenterOffsetDataset(Dataset):
 
         return heatmap.unsqueeze(0), offsets, offset_mask.unsqueeze(0)
 
-    def __getitem__(self, idx):
-        sample_id, image, semantic_mask, instance_map = self.base_dataset[idx]
+    def __getitem__(self, index):
+        sample_id, image, semantic_mask, instance_map = self.base_dataset[index]
         heatmap, offsets, offset_mask = self._build_center_targets(instance_map)
 
         return sample_id, image, heatmap, offsets, offset_mask

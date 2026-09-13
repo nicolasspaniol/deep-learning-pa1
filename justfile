@@ -3,3 +3,6 @@ test:
 
 run $SCRIPT:
     PYTHONPATH=src uv run scripts/$SCRIPT.py
+
+typecheck:
+    uvx ty check

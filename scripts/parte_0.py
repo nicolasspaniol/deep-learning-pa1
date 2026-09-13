@@ -111,7 +111,7 @@ with torch.no_grad():
 
     iou_scores = torch.tensor(iou_scores).mean(dim=0)
     dice_scores = torch.tensor(dice_scores).mean(dim=0)
-    best_threshold = thresholds[iou_scores.argmax()]
+    best_threshold = float(thresholds[int(iou_scores.argmax())])
 
     plt.axvline(best_threshold, color="k", linestyle="--")
     plt.plot(thresholds, iou_scores, label="IoU")
