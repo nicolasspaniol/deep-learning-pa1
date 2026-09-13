@@ -2,6 +2,7 @@
 from src.synthetic_dataset import SyntheticEllipseDataset
 from src.resunet import ResUNet
 from src import utils
+from src.device import device
 
 # libraries
 import matplotlib.pyplot as plt
@@ -13,9 +14,6 @@ from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print('Device:', device.type)
 
 dataset = SyntheticEllipseDataset(num_samples=128)
 train_dataset, val_dataset, test_dataset = random_split(dataset, [0.7, 0.15, 0.15])
@@ -124,7 +122,7 @@ with torch.no_grad():
 
     # computa o IoU e Dice pontuais no conjunto de teste
     iou_scores_test, dice_scores_test = [], []
-    for image, mask, _ in DataLoader(test_dataset, pin_memory=True):
+    for image, mask, _ in DataLoader(test_dataset):
         y_hat = pred(image)
         iou_scores_test.append(float(utils.iou_score(1 * (y_hat > best_threshold), mask)))
         dice_scores_test.append(float(utils.dice_score(1 * (y_hat > best_threshold), mask)))

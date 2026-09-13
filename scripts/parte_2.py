@@ -5,6 +5,8 @@ from src.resunet import ResUNet
 from src.bbbc038_dataset import BBBC038Dataset
 from src.center_offset_dataset import CenterOffsetDataset
 from src.plotting import plot_sample, plot_prediction
+from src.device import device
+from src.datasets import bbbc038_center_offsets
 
 # libraries
 import os
@@ -21,11 +23,6 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, random_split, Subset
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device.type)
-
 # carrega o dataset
-dataset = CenterOffsetDataset(BBBC038Dataset(True, './data/stage1_train'))
-generator = torch.Generator().manual_seed(42)
-train_dataset, val_dataset = random_split(dataset, [0.8, 0.2], generator=generator)
+train_ds, val_ds, test_ds = bbbc038_center_offsets()
 test_dataset = BBBC038Dataset(False, './data/stage1_test')

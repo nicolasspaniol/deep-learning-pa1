@@ -3,34 +3,23 @@ from torch.utils.data import Dataset
 
 
 class CenterOffsetDataset(Dataset):
-    """
-    Wraps/extends a BBBC038Dataset (Trilha C) to additionally produce:
-      - heatmap:      (1, H, W) gaussian blob peaked at each instance center
-      - offsets:      (2, H, W) dx, dy from each foreground pixel to its
-                       instance's center
-      - offset_mask:  (1, H, W) 1 on foreground pixels, 0 elsewhere (mask the
-                       offset loss with this)
-    """
-
     def __init__(self, base_dataset, gaussian_sigma: float = 2.0):
         assert base_dataset.is_training, "CenterOffsetDataset needs the training split (needs instance_map)"
         self.base_dataset = base_dataset
         self.gaussian_sigma = gaussian_sigma
-
-        img_size = base_dataset.img_size
-        yy, xx = torch.meshgrid(
-            torch.arange(img_size, dtype=torch.float32),
-            torch.arange(img_size, dtype=torch.float32),
-            indexing='ij',
-        )
-        self._yy = yy
-        self._xx = xx
+        # no more precomputed _yy/_xx here
 
     def __len__(self):
         return len(self.base_dataset)
 
     def _build_center_targets(self, instance_map: torch.Tensor, sigma: float):
         H, W = instance_map.shape
+        yy, xx = torch.meshgrid(
+            torch.arange(H, dtype=torch.float32),
+            torch.arange(W, dtype=torch.float32),
+            indexing='ij',
+        )
+
         heatmap = torch.zeros((H, W), dtype=torch.float32)
         offsets = torch.zeros((2, H, W), dtype=torch.float32)
         offset_mask = torch.zeros((H, W), dtype=torch.float32)
@@ -49,14 +38,14 @@ class CenterOffsetDataset(Dataset):
             cy = ys.float().mean()
             cx = xs.float().mean()
 
-            dxx = self._xx - cx
-            dyy = self._yy - cy
+            dxx = xx - cx
+            dyy = yy - cy
             dist_sq = dxx ** 2 + dyy ** 2
             blob = torch.exp(-dist_sq * inv_two_sigma_sq)
             heatmap = torch.maximum(heatmap, blob)
 
-            offsets[0][inst_mask] = cx - self._xx[inst_mask]
-            offsets[1][inst_mask] = cy - self._yy[inst_mask]
+            offsets[0][inst_mask] = cx - xx[inst_mask]
+            offsets[1][inst_mask] = cy - yy[inst_mask]
             offset_mask[inst_mask] = 1.0
 
         return heatmap.unsqueeze(0), offsets, offset_mask.unsqueeze(0)
@@ -64,5 +53,4 @@ class CenterOffsetDataset(Dataset):
     def __getitem__(self, index):
         sample_id, image, semantic_mask, instance_map = self.base_dataset[index]
         heatmap, offsets, offset_mask = self._build_center_targets(instance_map, self.gaussian_sigma)
-
         return sample_id, image, heatmap, offsets, offset_mask
