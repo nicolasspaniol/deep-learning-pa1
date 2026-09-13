@@ -22,16 +22,18 @@ def main(epochs: int):
     train_ds, val_ds, test_ds = bbbc038_center_offsets()
 
     # model -------------------------------
-    model = ResUNet(3, 3).to(device)
+    model = ResUNet(3, 4).to(device)
 
     # training process -------------------------
     loader = DataLoader(train_ds, batch_size=16, shuffle=True)
 
     heatmap_loss_fn = nn.MSELoss()
     offset_loss_fn = nn.L1Loss(reduction='none')  # 'none' pra poder mascarar pixel a pixel
+    foreground_loss_fn = nn.BCEWithLogitsLoss()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     offset_loss_weight = 1
+    foreground_loss_weight = 1
 
     model.train()
     for epoch in (pbar := tqdm(range(epochs))):
@@ -42,17 +44,19 @@ def main(epochs: int):
             offset_mask = offset_mask.to(device)
 
             pred = model(image)
-            pred_heatmap = pred[:, 0:1]
-            pred_offsets = pred[:, 1:3]
+            pred_heatmap =    pred[:, 0:1]
+            pred_offsets =    pred[:, 1:3]
+            pred_foreground = pred[:, 3:4]
 
             loss_heatmap = heatmap_loss_fn(pred_heatmap, heatmap)
 
-            # L1 nos offsets, só nos pixels de foreground (offset_mask expandido pros 2 canais)
             raw_offset_loss = offset_loss_fn(pred_offsets, offsets)
             mask_2ch = offset_mask.expand_as(raw_offset_loss)
             loss_offsets = (raw_offset_loss * mask_2ch).sum() / mask_2ch.sum().clamp(min=1.0)
 
-            loss = loss_heatmap + offset_loss_weight * loss_offsets
+            loss_foreground = foreground_loss_fn(pred_foreground, offset_mask)
+
+            loss = loss_heatmap + offset_loss_weight * loss_offsets + foreground_loss_weight * loss_foreground
             pbar.set_description(f"Loss {float(loss.item()):.2f}")
             pbar.refresh()
 

@@ -20,7 +20,6 @@ def main(weights_path: str):
     model.load_state_dict(torch.load(weights_path, map_location=device, weights_only=True))
     model.eval()
 
-
     @torch.no_grad()
     def run_inference(model, sample, device, mask_threshold=0.3):
         """
@@ -31,21 +30,22 @@ def main(weights_path: str):
         _, image, _, _, _ = sample
 
         image_batch = image.unsqueeze(0).to(device)
-        pred = model(image_batch).cpu()[0]  # (3, H, W)
+        pred = model(image_batch).cpu()[0]  # (4, H, W)
 
         pred_heatmap = pred[0].numpy()
         pred_dx, pred_dy = pred[1].numpy(), pred[2].numpy()
-        pred_mask = (pred_heatmap > mask_threshold).astype(np.float32)
+        pred_foreground = torch.sigmoid(pred[3]).numpy()
+        pred_mask = (pred_foreground > mask_threshold).astype(np.float32)
 
         return pred_heatmap, pred_dx, pred_dy, pred_mask
 
+    while True:
+        sample = test_ds[random.randint(0, 50)]
+        pred_heatmap, pred_dx, pred_dy, pred_mask = run_inference(model, sample, device)
+        peaks = utils.find_peaks(pred_heatmap)
 
-    sample = test_ds[random.randint(0, 50)]
-    pred_heatmap, pred_dx, pred_dy, pred_mask = run_inference(model, sample, device)
-    peaks = utils.find_peaks(pred_heatmap)
-
-    plot_prediction(sample, pred_heatmap, pred_dx, pred_dy, pred_mask, peaks=peaks)
-    plt.show()
+        plot_prediction(sample, pred_heatmap, pred_dx, pred_dy, pred_mask, peaks=peaks)
+        plt.show()
 
 
 if __name__ == '__main__':
