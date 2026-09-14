@@ -24,6 +24,5 @@ uv run scripts/train_resunet_instances.py 20
 
 To compute the model's mAP:
 ```bash
-# change 'weights...' with the filename printed by 'train_resunet_instances.py'
-uv run scripts/compute_map.py weights/weights_...
+uv run scripts/compute_map.py weights/checkpoint
 ```
