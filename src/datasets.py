@@ -29,6 +29,17 @@ class _TileIndexView(Dataset):
         return self.tiled[sample_idx * self.n2 + tile_idx]
 
 
+def bbbc038():
+    dataset = BBBC038Dataset(True, './data/stage1_train', img_size=_img_size)
+    return random_split(dataset, [0.8, 0.1, 0.1], generator=_gen)
+ 
+ 
+def bbbc038_center_offsets():
+    dataset = CenterOffsetDataset(BBBC038Dataset(True, './data/stage1_train', img_size=_img_size))
+    return random_split(dataset, [0.8, 0.1, 0.1], generator=_gen)
+
+
+
 def bbbc038_center_offsets():
     dataset = CenterOffsetDataset(BBBC038Dataset(True, './data/stage1_train', img_size=_img_size))
     return random_split(dataset, [0.8, 0.1, 0.1], generator=_gen)
