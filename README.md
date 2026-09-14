@@ -33,3 +33,5 @@ uv run scripts/compute_map.py weights/checkpoint
 - [AI_LOG.md](AI_LOG.md)
 - [inferencia.ipynb](notebooks/inferencia.ipynb)
 - [Checkpoint](weights/checkpoint)
+
+Some sections were made on Jupyter [notebooks](notebooks/), others were made as plain Python [scripts](scripts/).
