@@ -25,7 +25,7 @@ def main(epochs: int):
     model = ResUNet(3, 4).to(device)
 
     # training process -------------------------
-    loader = DataLoader(train_ds, batch_size=16, shuffle=True)
+    loader = DataLoader(train_ds, batch_size=64, shuffle=True)
 
     heatmap_loss_fn = nn.MSELoss()
     offset_loss_fn = nn.L1Loss(reduction='none')  # 'none' pra poder mascarar pixel a pixel
