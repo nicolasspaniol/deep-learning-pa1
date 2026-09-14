@@ -54,3 +54,6 @@ class CenterOffsetDataset(Dataset):
         sample_id, image, semantic_mask, instance_map = self.base_dataset[index]
         heatmap, offsets, offset_mask = self._build_center_targets(instance_map, self.gaussian_sigma)
         return sample_id, image, heatmap, offsets, offset_mask
+
+    def __getattr__(self, name):
+        return getattr(self.base_dataset, name)

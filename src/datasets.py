@@ -16,14 +16,15 @@ class _TileIndexView(Dataset):
         self.tiled = tiled_dataset
         self.sample_indices = list(sample_indices)
         self.n2 = tiled_dataset.n_tiles ** 2
-        self.img_size = tiled_dataset.img_size
-        self.is_training = tiled_dataset.is_training
+
+    def __getattr__(self, name):
+        return getattr(self.tiled, name)
 
     def __len__(self):
         return len(self.sample_indices) * self.n2
 
-    def __getitem__(self, index):
-        sample_pos, tile_idx = divmod(index, self.n2)
+    def __getitem__(self, idx):
+        sample_pos, tile_idx = divmod(idx, self.n2)
         sample_idx = self.sample_indices[sample_pos]
         return self.tiled[sample_idx * self.n2 + tile_idx]
 
