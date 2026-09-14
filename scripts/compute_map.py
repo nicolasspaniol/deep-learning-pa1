@@ -71,14 +71,14 @@ def main():
 
     map_result = utils.compute_map(gt_pred_pairs)
 
-    print(f"mAP final (sem tiling): {map_result['final_map']:.4f}")
+    print(f"mAP final: {map_result['final_map']:.4f}")
 
     thresholds = sorted(map_result['ap_by_threshold'])
     plt.figure(figsize=(6, 4))
     plt.plot(thresholds, [map_result['ap_by_threshold'][t] for t in thresholds], marker='o')
     plt.xlabel('IoU threshold')
     plt.ylabel('AP')
-    plt.title('AP by IoU threshold (baseline, no tiling)')
+    plt.title('AP by IoU threshold')
     plt.tight_layout()
     plt.show()
 
