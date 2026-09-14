@@ -147,7 +147,8 @@ def main():
     print('Fazendo o merge das instâncias nos tiles...')
 
     base_untiled = test_ds.base_dataset.base_dataset
-    _, full_image, _, _ = base_untiled[sample_idx]
+    real_idx = test_ds.base_dataset.sample_indices[sample_idx]
+    _, full_image, _, _ = base_untiled[real_idx]
     h, w = full_image.shape[1:]
     tile_bounds = [test_ds._tile_bounds(i) for i in range(n_tiles ** 2)]
 
@@ -172,6 +173,28 @@ def main():
     plt.imshow(merged_instances, cmap='inferno')
     plt.title(f'Merged instances ({merged_instances.max().item()} objects)')
     plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+    print('Calculando mAP para os dois métodos de merge...')
+
+    real_idx = test_ds.base_dataset.sample_indices[sample_idx]
+    _, _, gt_semantic, gt_instance = test_ds.base_dataset.base_dataset[real_idx]
+
+    map_reconciled = utils.compute_map([(gt_instance, merged_instances)])
+    map_naive = utils.compute_map([(gt_instance, merged_instances_naive)])
+
+    print(f"mAP (merge com reconciliação): {map_reconciled['final_map']:.4f}")
+    print(f"mAP (merge naive, com duplicatas): {map_naive['final_map']:.4f}")
+
+    thresholds = sorted(map_reconciled['ap_by_threshold'])
+    plt.figure(figsize=(6, 4))
+    plt.plot(thresholds, [map_reconciled['ap_by_threshold'][t] for t in thresholds], label='Reconciled merge', marker='o')
+    plt.plot(thresholds, [map_naive['ap_by_threshold'][t] for t in thresholds], label='Naive merge (duplicates)', marker='o')
+    plt.xlabel('IoU threshold')
+    plt.ylabel('AP')
+    plt.title('AP by IoU threshold: reconciled vs naive merge')
+    plt.legend()
     plt.tight_layout()
     plt.show()
 
